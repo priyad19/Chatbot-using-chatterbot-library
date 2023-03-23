@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <title>ChatBot</title>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <style>
+      body {
+        font-family: monospace;
+      }
+      h1 {
+        background-color: #8080ff;
+        color: black;
+        display: inline-block;
+        font-size: 2em;
+        margin: 0;
+        padding: 10px;
+      }
+      #chatbox {
+        margin-left: auto;
+        margin-right: auto;
+        width: 40%;
+        margin-top: 60px;
+      }
+      #userInput {
+        margin-left: auto;
+        margin-right: auto;
+        width: 40%;
+        margin-top: 60px;
+      }
+      #textInput {
+        width: 90%;
+        border: none;
+        border-bottom: 3px solid black;
+        font-family: monospace;
+        font-size: 17px;
+      }
+      .userText {
+        color: black;
+        font-family: monospace;
+        font-size: 17px;
+        text-align: right;
+        line-height: 30px;
+      }
+      .userText span {
+        background-color: #e699ff;
+        padding: 10px;
+        border-radius: 2px;
+      }
+      .botText {
+        color: black;
+        font-family: monospace;
+        font-size: 17px;
+        text-align: left;
+        line-height: 30px;
+      }
+      .botText span {
+        background-color: #ffdd99;
+        padding: 10px;
+        border-radius: 2px;
+      }
+      #tidbit {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 300px;
+      }
+      .boxed {
+        margin-left: auto;
+        margin-right: auto;
+        width: 78%;
+        margin-top: 60px;
+        border: 1px solid green;
+      }
+      .box {
+        border: 2px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <center>
+      <h1>
+        AI ChatBot
+      </h1>
+    </center>
+    <div class="box"></div>
+    <div class="boxed">
+      <div>
+        <div id="chatbox">
+          <p class="botText">
+            <span>Hi! I'm ChatBot</span>
+          </p>
+        </div>
+        <div id="userInput">
+          <input id="textInput" type="text" name="msg" placeholder="Enter message here..." onkeydown="handleKeyPress(event)" />
+          <button id="voiceInput" onclick="startSpeechRecognition()">Speak</button>
+        </div>
+        
+        <script>
+          function handleKeyPress(event) {
+            if (event.keyCode === 13) { // 13 is the code for the "Enter" key
+              getBotResponse();
+            }
+          }
+        
+          function startSpeechRecognition() {
+            var recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = "en-US";
+            recognition.onresult = function(event) {
+              var rawText = event.results[0][0].transcript;
+              $("#textInput").val(rawText);
+              getBotResponse();
+            }
+            recognition.start();
+          }
+        
+          function getBotResponse() {
+            var rawText = $("#textInput").val();
+            var userHtml = '<p class="userText"><span>' + rawText + "</span></p>";
+            $("#textInput").val("");
+            $("#chatbox").append(userHtml);
+            document.getElementById("userInput").scrollIntoView({ block: "start", behavior: "smooth" });
+            $.get("/get_bot_response/", { msg: rawText }).done(function(data) {
+              var response = data.response.replace(/\n/g, "<br>");
+              var chunks = response.match(/[^\.!\?]+[\.!\?]+/g); // split response into chunks based on punctuation marks
+              $("#chatbox").append('<p class="botText"><span></span></p>'); // add empty bot response element to the chatbox
+              var botText = $("#chatbox .botText:last-child span"); // get the span element of the empty bot response element
+              var i = 0;
+              var delay = 100; // set delay in milliseconds
+              function playChunks() { // function to play the chunks of text
+                if (i < chunks.length) {
+                  botText.text(chunks[i]);
+                  var msg = new SpeechSynthesisUtterance(chunks[i]);
+                  msg.rate = 1.0;
+                  msg.lang = 'en-US';
+                  msg.voiceURI = 'Google US English'; // specify the voice for the utterance
+                  msg.onend = function() {
+                    setTimeout(playChunks, delay); // play the next chunk after a short delay
+                  };
+                  window.speechSynthesis.speak(msg);
+                  i++;
+                } else {
+                  botText.text(response); // display the full response in the bot response element
+                  document.getElementById("userInput").scrollIntoView({ block: "start", behavior: "smooth" });
+                }
+              }
+              playChunks(); // start playing the chunks of text
+            });
+          }                                                                                   
+        </script>            
+    </div>
+  </body>
+</html>
